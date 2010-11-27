@@ -1,5 +1,5 @@
-dllist
-fheap
-main
-test
+fiboheap.go/dllist
+fiboheap.go/fheap
+fiboheap.go/main
+fiboheap.go/test
 
