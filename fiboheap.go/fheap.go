@@ -22,8 +22,8 @@ type FHeapNode struct {
 	degree			int
 	mark			bool
 	prev, next		*FHeapNode
-	child, parent	*FHeapNode
-	key				int
+	child, parent		*FHeapNode
+	key			int
 	Value			interface{}		// untouched
 }
 
@@ -35,8 +35,41 @@ func (n *FHeapNode) addLast(destNode *FHeapNode) {
 	n.prev = destNode
 }
 
+func (n *FHeapNode) addChild(child *FHeapNode) {
+	if (n.child != nil) {
+		n.child.addLast(child)
+	} else {
+		child.prev = child
+		child.next = child
+		n.child = child
+	}
+}
+
 func (n *FHeapNode) Next() *FHeapNode {
 	return n.next
+}
+
+// op called on the head of the list
+// specify node to delete
+// returns the head of the list (to allow for n.remove(n1).remove(n2) .. etc
+func (root *FHeapNode) remove(node *FHeapNode) *FHeapNode {
+	// ensure all reqd values are not null
+	newroot := root
+	if (node.prev == nil) {
+		// deleting root
+		node = nil
+		newroot = node.next
+	} else if (node.next == nil) {
+		// deleting tail
+		node = nil
+	} else {
+		// both are not null, disconnect
+		node.prev.next = node.next
+		node.next.prev = node
+		node = nil
+	}	
+	
+	return newroot
 }
 
 func (n *FHeapNode) print() {
@@ -58,7 +91,7 @@ func (fh *FHeap) insert(key int, value interface{}) {
 	node.Value = value
 	node.prev = node
 	node.next = node
-	
+
 	if fh.minKeyRoot == nil {
 		fh.minKeyRoot = node
 	} else {
@@ -71,29 +104,65 @@ func (fh *FHeap) insert(key int, value interface{}) {
 	fh.count++
 }
 
+// add y as a child of x (remove from root list)
+func (fh *FHeap) link(y *FHeapNode, x *FHeapNode) {
+	// remove y from the root list of H
+	if (y.parent != nil) {
+		fmt.Println("node to link, cannot have a parent")
+	}
+	
+	fh.minKeyRoot.remove(y)
+	// make y a child of x
+	y.parent = x
+	x.addChild(y)
+	fh.maxDegree++
+	y.mark = false	
+}
+
 func (root *FHeapNode) printTree() {	
 	q := list.New()	
+	marker := new(FHeapNode)
+	marker.degree = -1
+	q.PushBack(marker)
 	q.PushBack(root)
-	
-	prevParent := root.parent
+
+	prevNode := root.parent
 	for e := q.Front(); e != nil; e = e.Next() {
 		treeNode := e.Value.(*FHeapNode)
-		
-		if (treeNode.parent != prevParent) {
-			fmt.Println()
+	
+		if treeNode.degree == -1 {		// marker node
+			// requeue at the end to indicate end of next level
+			if prevNode != nil && prevNode.degree == -1 {
+				break
+			}
+			
+			fmt.Println("")
+			q.PushBack(treeNode)
+			prevNode = treeNode
+			continue
+		} 	
+
+		if prevNode != nil && prevNode.parent != nil && prevNode.parent.degree != -1 && prevNode.parent != treeNode.parent {
+			fmt.Print(", ")
+		} else {
+ 			fmt.Print(" ")
 		}
-		prevParent = treeNode.parent
+				
 		treeNode.print()
+		
+
 		mainchild := treeNode.child
 		if mainchild != nil {
 			q.PushBack(mainchild)
-			
+
 			for c := mainchild.next; c != mainchild; c = c.next {
 				// add all children to queue
 				q.PushBack(c)
 			}
-		
+
 		}
+		
+		prevNode = treeNode
 	}
 }
 
@@ -101,12 +170,12 @@ func (root *FHeapNode) printTree() {
 /* function to test FHeap and FHeapNode behaviour */
 func test_FHeapNode_print() {
 	fmt.Println("test_FHeapNode_print: BEGIN")
-	
+
 	n := new(FHeapNode)
 	n.key = 1
 	n.prev = n
 	n.next = n
-	
+
 	n.print()
 	fmt.Println()
 	fmt.Println("test_FHeapNode_print: SUCCESS")
@@ -114,33 +183,33 @@ func test_FHeapNode_print() {
 
 func test_printTree() {
 	fmt.Println("test_printTree: BEGIN")
-	
+
 	// create tree
 	n := new(FHeapNode)
 	n.key = 1
-	
+
 	// level 1 children
 	l1n1 := new(FHeapNode)
 	l1n1.key = 2
 	l1n1.parent = n
 	n.child = l1n1
-	
+
 	l1n2 := new(FHeapNode)
 	l1n2.key = 3
 	l1n2.parent = n
-	
+
 	l1n1.prev = l1n2
 	l1n1.next = l1n2
 	l1n2.prev = l1n1
 	l1n2.next = l1n1
 	// level 2 children
-	
+
 	l2n1 := new(FHeapNode)
 	l2n1.key = 4
-	
+
 	l2n2 := new(FHeapNode)
 	l2n2.key = 5
-	
+
 	l2n1.prev = l2n2
 	l2n1.next = l2n2
 	l2n2.prev = l2n1
@@ -148,14 +217,14 @@ func test_printTree() {
 	l1n1.child = l2n1
 	l2n1.parent = l1n1
 	l2n2.parent = l1n1
-	
-	
+
+
 	l2n3 := new(FHeapNode)
 	l2n3.key = 6
-	
+
 	l2n4 := new(FHeapNode)
 	l2n4.key = 7
-	
+
 	l2n3.prev = l2n4
 	l2n3.next = l2n4
 	l2n4.prev = l2n3
@@ -163,9 +232,10 @@ func test_printTree() {
 	l1n2.child = l2n3
 	l2n3.parent = l1n2
 	l2n4.parent = l1n2
-	
+
 	// print
 	n.printTree()
+	
 	fmt.Println()
 	fmt.Println("test_printTree: SUCCESS")
 }
@@ -174,14 +244,14 @@ func test_FHeap_insert() {
 	// test for min root, and insertion order
 	fmt.Println("test_FHeap_insert: BEGIN")
 	fh := new(FHeap)
-	
+
 	fh.insert(2, nil)
 	fh.insert(5, nil)
 	fh.insert(6, nil)
 	fh.insert(1, nil)
 	fh.insert(4, nil)
 	fh.insert(3, nil)
-			
+
 	minrt := fh.min()
 	fmt.Println("min root: ", minrt.key)
 
@@ -196,7 +266,7 @@ func test_FHeap_insert() {
 }
 
 func main() {
-	test_FHeapNode_print()
+	test_FHeapNode_print()	
 	fmt.Println()
 	test_printTree()
 	fmt.Println()
