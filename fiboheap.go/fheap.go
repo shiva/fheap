@@ -22,8 +22,8 @@ type FHeapNode struct {
 	degree			int
 	mark			bool
 	prev, next		*FHeapNode
-	child, parent		*FHeapNode
-	key			int
+	child, parent	*FHeapNode
+	key				int
 	Value			interface{}		// untouched
 }
 
@@ -76,6 +76,9 @@ func (n *FHeapNode) print() {
 	fmt.Print(n.key)
 }
 
+
+
+/* Fibonacci Heap implementation */
 func MakeHeap() *FHeap {
 	fh := new(FHeap)
 	return fh
@@ -85,6 +88,18 @@ func (fh *FHeap) min() *FHeapNode {
 	return fh.minKeyRoot;
 } 
 
+func (fh *FHeap) add_to_root_list(node *FHeapNode) {
+	if fh.minKeyRoot == nil {
+		fh.minKeyRoot = node
+	} else {
+		fh.minKeyRoot.addLast(node)
+		if node.key < fh.minKeyRoot.key {
+			// this is minkey
+			fh.minKeyRoot = node
+		}
+	}
+}
+
 func (fh *FHeap) insert(key int, value interface{}) {
 	node := new(FHeapNode)
 	node.key = key
@@ -92,15 +107,7 @@ func (fh *FHeap) insert(key int, value interface{}) {
 	node.prev = node
 	node.next = node
 
-	if fh.minKeyRoot == nil {
-		fh.minKeyRoot = node
-	} else {
-		fh.minKeyRoot.addLast(node)
-		if key < fh.minKeyRoot.key {
-			// this is minkey
-			fh.minKeyRoot = node
-		}
-	}
+	fh.add_to_root_list(node)
 	fh.count++
 }
 
@@ -119,6 +126,66 @@ func (fh *FHeap) link(y *FHeapNode, x *FHeapNode) {
 	y.mark = false	
 }
 
+func (x *FHeapNode) swap(y *FHeapNode) {
+	x_prev := x.prev
+	x_next := x.next
+	
+	x.prev = y.prev
+	x.next = y.next
+	y.prev = x_prev
+	y.next = x_next
+}
+
+func (fh *FHeap) consolidate() {
+	var degArr [10] *FHeapNode
+	for w := fh.minKeyRoot; w != nil; w = w.Next() {
+		x := w
+		d := x.degree
+		for degArr[d] != nil {
+			y := degArr[d]
+			if ( x.key > y.key) {
+				x.swap(y)
+			}
+			fh.link(y, x)
+			degArr[d] = nil
+		}
+		degArr[d] = x
+	}
+	fh.minKeyRoot = nil
+	for i := 0; i < fh.maxDegree; i++ {
+		if degArr[i] != nil {
+			fh.add_to_root_list(degArr[i])
+		}
+	}
+}
+
+func (fh *FHeap) extract_min() *FHeapNode {
+	z := fh.min()
+	// add each child of z to root list
+	first_child := z.child
+	first_child.parent = nil
+	fh.add_to_root_list(first_child)
+	for c := first_child.next; c != first_child; c = c.next {
+		fh.add_to_root_list(c)
+		c.parent = nil
+	}
+	
+	// delete z from root list
+	z.prev.next = z.next
+	z.next.prev = z.prev
+	
+	if z == z.next {
+		fh.minKeyRoot = nil
+	} else {
+		fh.minKeyRoot = z.next
+		fh.consolidate()
+	}
+	fh.count--
+	
+	return z
+}
+
+/* helper to print a tree, starting from the root list in a f-heap */
 func (root *FHeapNode) printTree() {	
 	q := list.New()	
 	marker := new(FHeapNode)
@@ -166,7 +233,9 @@ func (root *FHeapNode) printTree() {
 	}
 }
 
-/* function to test FHeap and FHeapNode behaviour */
+/* Tests */
+
+/* f-heap tests */
 func test_FHeapNode_print() {
 	fmt.Println("test_FHeapNode_print: BEGIN")
 
@@ -180,6 +249,112 @@ func test_FHeapNode_print() {
 	fmt.Println("test_FHeapNode_print: SUCCESS")
 }
 
+func test_FHeap_insert() {
+	// test for min root, and insertion order
+	fmt.Println("test_FHeap_insert: BEGIN")
+	fh := new(FHeap)
+
+	fh.insert(2, nil)
+	fh.insert(5, nil)
+	fh.insert(6, nil)
+	fh.insert(1, nil)
+	fh.insert(4, nil)
+	fh.insert(3, nil)
+
+	minrt := fh.min()
+	fmt.Println("min root: ", minrt.key)
+
+	n := minrt
+	fmt.Print("roots : ", n.key)
+	for e := n.Next(); e != n; e = e.Next() {
+		fmt.Print(", ")
+		fmt.Print(e.key)
+	}
+	fmt.Println()
+	
+	fmt.Println("Tree for root: ", minrt.key)
+	minrt.printTree()
+	fmt.Println()
+	
+	for e := n.Next(); e != n; e = e.Next() {
+		fmt.Println("Tree for root: ", e.key)
+		e.printTree()
+		fmt.Println()
+	}
+	fmt.Println("test_FHeap_insert: SUCCESS")
+}
+
+
+func test_extractmin() {
+	// test for min root, and insertion order
+	fmt.Println("test_FHeap_insert: BEGIN")
+	fh := new(FHeap)
+
+	fh.insert(2, nil)
+	fh.insert(5, nil)
+	fh.insert(6, nil)
+	fh.insert(1, nil)
+	fh.insert(4, nil)
+	fh.insert(3, nil)
+
+	minrt := fh.min()
+	fmt.Println("min root: ", minrt.key)
+
+	n := minrt
+	fmt.Print("roots : ", n.key)
+	for e := n.Next(); e != n; e = e.Next() {
+		fmt.Print(", ")
+		fmt.Print(e.key)
+	}
+	fmt.Println()
+	
+	fmt.Println("Tree for root: ", minrt.key)
+	minrt.printTree()
+	fmt.Println()
+	
+	for e := n.Next(); e != n; e = e.Next() {
+		fmt.Println("Tree for root: ", e.key)
+		e.printTree()
+		fmt.Println()
+	}
+	
+	
+	fmt.Println("test extract min .... ")
+	test := fh.extract_min()
+	fmt.Println("Extacted min key ", test.key)
+	
+	
+	
+	
+	
+	
+	minrt = fh.min()
+	fmt.Println("min root: ", minrt.key)
+
+	n = minrt
+	fmt.Print("roots : ", n.key)
+	for e := n.Next(); e != n; e = e.Next() {
+		fmt.Print(", ")
+		fmt.Print(e.key)
+	}
+	fmt.Println()
+	
+	fmt.Println("Tree for root: ", minrt.key)
+	minrt.printTree()
+	fmt.Println()
+	
+	for e := n.Next(); e != n; e = e.Next() {
+		fmt.Println("Tree for root: ", e.key)
+		e.printTree()
+		fmt.Println()
+	}
+	
+	
+	
+	fmt.Println("test_FHeap_insert: SUCCESS")
+}
+
+/* test for printTree */
 func test_printTree() {
 	fmt.Println("test_printTree: BEGIN")
 
@@ -239,31 +414,8 @@ func test_printTree() {
 	fmt.Println("test_printTree: SUCCESS")
 }
 
-func test_FHeap_insert() {
-	// test for min root, and insertion order
-	fmt.Println("test_FHeap_insert: BEGIN")
-	fh := new(FHeap)
 
-	fh.insert(2, nil)
-	fh.insert(5, nil)
-	fh.insert(6, nil)
-	fh.insert(1, nil)
-	fh.insert(4, nil)
-	fh.insert(3, nil)
-
-	minrt := fh.min()
-	fmt.Println("min root: ", minrt.key)
-
-	n := minrt
-	fmt.Print("roots : ", n.key)
-	for e := n.Next(); e != n; e = e.Next() {
-		fmt.Print(", ")
-		fmt.Print(e.key)
-	}
-	fmt.Println()
-	fmt.Println("test_FHeap_insert: SUCCESS")
-}
-
+/* main */
 func main() {
 	test_FHeapNode_print()	
 	fmt.Println()
