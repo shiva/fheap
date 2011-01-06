@@ -14,7 +14,6 @@ func main() {
 }
 
 // testing lists
-
 func testLists() {
 	
 	// create list

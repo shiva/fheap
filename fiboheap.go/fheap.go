@@ -71,6 +71,10 @@ func (fh *FHeap) insert(key int, value interface{}) {
 	fh.count++
 }
 
+func (fh *FHeap) consolidate() {
+	
+}
+
 func (root *FHeapNode) printTree() {	
 	q := list.New()	
 	q.PushBack(root)
@@ -96,7 +100,6 @@ func (root *FHeapNode) printTree() {
 		}
 	}
 }
-
 
 /* function to test FHeap and FHeapNode behaviour */
 func test_FHeapNode_print() {
